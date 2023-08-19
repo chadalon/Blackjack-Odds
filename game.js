@@ -112,7 +112,7 @@ class Game
             p = this.players[i];
             if (p.sittingOut) continue;
             buyIn = p.buyIn;
-            if (p.funds >= buyIn)
+            if (p.funds >= buyIn || !p.canBust)
             {
                 p.addBet(buyIn, 0);
             }
@@ -142,6 +142,7 @@ class Game
         console.log()
         if (this.shoe.length / (this.decks * 52) * 100 <= this.DEALER_SHUFFLE)
         {
+            console.log("shufflin");
             // shuffle
             this.shoe = this.shoe.concat(this.discards);
             this.discards = [];
@@ -190,7 +191,7 @@ class Game
     }
     getDealerTopCard()
     {
-        return this.dealerHand[1];
+        return JSON.parse(JSON.stringify(this.dealerHand[1]));
     }
     dealPlayer(player, handNum = 0)
     {
@@ -215,7 +216,20 @@ class Game
         this.saveHiddenDealerCard = this.hiddenDealerCard;
         this.saveDealerHand = JSON.parse(JSON.stringify(this.dealerHand));
         this.saveGameStarted = this.gameStarted;
-        this.saveDecks = this.Decks;
+        this.saveDecks = this.decks;
+    }
+    loadState()
+    {
+        this.players = JSON.parse(JSON.stringify(this.savePlayers));
+        this.shoe = JSON.parse(JSON.stringify(this.saveShoe));
+        this.discards = JSON.parse(JSON.stringify(this.saveDiscards));
+        this.count = this.saveCount;
+        this.roundDealt = this.saveRoundDealt;
+        this.hiddenDealerCard = this.saveHiddenDealerCard;
+        this.dealerHand = JSON.parse(JSON.stringify(this.saveDealerHand));
+        this.gameStarted = this.saveGameStarted;
+        this.decks = this.saveDecks;
+
     }
     playerStand(player, handNum)
     {
@@ -448,22 +462,6 @@ class Game
     {
         throw new Error("Playerid " + player.playerId + " Can't place a move with hand " + handNum + "!");
     }
-    cardtoString(card)
-    {
-        let cString;
-        if (card.value === 1)
-            cString = "Ace";
-        else if (card.value === 11)
-            cString = "Jack";
-        else if (card.value === 12)
-            cString = "Queen";
-        else if (card.value === 13)
-            cString = "King";
-        else
-            cString = card.value.toString();
-        cString += " of " + cards.SUIT_VALUE[card.suit];
-        return cString;
-    }
 }
 function checkCardValsEqual(val1, val2)
 {
@@ -517,5 +515,41 @@ function arrayEquals(a, b) {
         a.length === b.length &&
         a.every((val, index) => val === b[index]);
 }
+function cardtoString(card)
+{
+    let cString;
+    if (card.value === 1)
+        cString = "Ace";
+    else if (card.value === 11)
+        cString = "Jack";
+    else if (card.value === 12)
+        cString = "Queen";
+    else if (card.value === 13)
+        cString = "King";
+    else
+        cString = card.value.toString();
+    cString += " of " + cards.SUIT_VALUE[card.suit];
+    return cString;
+}
 
-module.exports = { Game, handTotal, finalScore, softSeventeen }
+function printHand(hand)
+{
+    for (let i = 0; i < hand.length; i++)
+    {
+        console.log(cardtoString(hand[i]));
+    }
+    console.log("\n");
+}
+function printPlayerHand(player)
+{
+    let hand = player.currentHand;
+    console.log("Your hands:");
+    for (let i = 0; i < hand.length; i++)
+    {
+        if (hand[i].length === 0) continue;
+        console.log("Hand #" + i + ":");
+        printHand(hand[i]);
+    }
+}
+
+module.exports = { Game, handTotal, finalScore, softSeventeen, printHand, printPlayerHand, cardtoString }

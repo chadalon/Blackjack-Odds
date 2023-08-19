@@ -1,6 +1,7 @@
 const game = require("./game.js");
 const p = require("./player.js");
 const readline = require('readline');
+const a = require("./analyze.js");
 /**
  * Some things to consider:
  * Player strategies - random vs if others are playing 'perfectly', if they tend to hit more, etc
@@ -80,8 +81,8 @@ async function main()
 
                 break;
             }
-            printPlayerHand(player.currentHand);
-            console.log("Dealer hand:\n", g.cardtoString(g.getDealerTopCard()));
+            game.printPlayerHand(player);
+            console.log("Dealer hand:\n", game.cardtoString(g.getDealerTopCard()));
             //playerAction('s', hNum);
             let ans = await askQuestion("What do you want to do? (on hand number " + hNum + ")\n");
             console.log("\n");
@@ -102,32 +103,14 @@ function finishRound()
     g.dealerTurn();
     console.log("Results:");
     console.log("Dealer's Hand:");
-    printHand(g.dealerHand);
-    printPlayerHand(player.currentHand);
+    game.printHand(g.dealerHand);
+    game.printPlayerHand(player);
     console.log("RoundGainz:");
     console.log(player.prevRoundResults);
     console.log("The count is at",g.count,"and the real count is",g.realCount());
     g.endOfRound();
     console.log("Shoe size",g.shoe.length,"total cards (shouldnt change):",g.shoe.length + g.discards.length, "discards len:",g.discards.length);
 
-}
-function printHand(hand)
-{
-    for (let i = 0; i < hand.length; i++)
-    {
-        console.log(g.cardtoString(hand[i]));
-    }
-    console.log("\n");
-}
-function printPlayerHand(hand)
-{
-    console.log("Your hands:");
-    for (let i = 0; i < hand.length; i++)
-    {
-        if (hand[i].length === 0) continue;
-        console.log("Hand #" + i + ":");
-        printHand(hand[i]);
-    }
 }
 function playerAction(ans, handNum)
 {
@@ -156,4 +139,6 @@ function playerAction(ans, handNum)
         throw new Error("Please enter a valid option ([h]it, [s]tand, [d]ouble, s[p]lit, s[u]rrender");
     }
 }
+a.analyze();
+return;
 main();
