@@ -9,8 +9,45 @@ const otherPlayers = [];
 var standWins = 0;
 var standTots = 0;
 var standPushs = 0;
+var standWLP = [0, 0, 0]; // WIN LOSS PUSH
+var sessionData = []; // 2d array of objects - player score, then dealer score
+/* TODO test if this or array is faster
+const MOVE_TEMPLATE = {
+    playerCards: null,
+    dealerCard: null,
+
+}*/
+/*
+[player cards - wait these would b outside, wins, losses, pushes, ] dealer card is already known
+*/
+function initSession()
+{
+    /**
+     * This way we can index into session data with our current score.
+     * I don't care that it's ugly, I care that it's fast.
+     * Outer
+     * 
+     * TODO separate hands with aces from hard value hands
+     */
+    for (let i = 0; i < 4; i++)
+    {
+        sessionData.push(null);
+    }
+    for (let i = 4; i < 22; i++)
+    {
+        // now for the possible dealer values
+        let outerArray = [null];
+        for (let j = 1; j < 11; j++)
+        {
+            outerArray.push([]); // these will contain the objects {stand: , hit: , double: , ... etc}
+        }
+        sessionData.push(outerArray);
+    }
+    console.log(sessionData);
+}
 function analyze()
 {
+    initSession();
     createGame();
     addPlayers();
     g.beginGame();
@@ -22,8 +59,14 @@ function analyze()
     console.log("t",standTots);
 
 }
+function newRound()
+{
+    standWLP = [0, 0, 0]; // W L P
+
+}
 function analyzeRound()
 {
+    newRound();
     g.placeBets();
     g.dealCards();
     initDealerHand = g.getDealerTopCard();
@@ -38,11 +81,20 @@ function analyzeRound()
             // log results
         g.saveState();
         testStand();
+
+        pushRoundResults();
     }
     // for now if you get an instant bj,
     // save in hard totals, etc (ref that chart to store dat)
 
     g.endOfRound();
+}
+function pushRoundResults()
+{
+    // initdealerhand, initpla...
+    // stand, hit, etc..
+
+    throw new Error("finish push round results");
 }
 function checkInstantBlackJack()
 {
@@ -93,10 +145,11 @@ function testStand()
     console.log("p",player.prevRoundResults[0]);
     console.log(player.funds);
     if (prevR > 0)
-        standWins++;
+        standWLP[0]++;
     else if (prevR < 0)
-        standPushs++
-    standTots++;
+        standWLP[1]++;
+    else
+        standWLP[2]++;
 }
 
 module.exports = {analyze}

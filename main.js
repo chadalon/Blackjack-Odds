@@ -1,7 +1,7 @@
 const game = require("./game.js");
 const p = require("./player.js");
 const readline = require('readline');
-const a = require("./analyze.js");
+const a = require("./data-miner.js");
 /**
  * Some things to consider:
  * Player strategies - random vs if others are playing 'perfectly', if they tend to hit more, etc
