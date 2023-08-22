@@ -1,8 +1,9 @@
 class Player
 {
-    constructor(playerId, canBust = true, buyIn = 5, funds = 1000)
+    static staticPlayerCounter = 0;
+    constructor(canBust = true, buyIn = 5, funds = 1000)
     {
-        this.playerId = playerId;
+        this.playerId = Player.staticPlayerCounter++; // assign id then increment
         this.canBust = canBust;
         this.buyIn = buyIn;
         this.currentHand = [[],[],[],[]]; // stored with four possible hands
@@ -12,6 +13,22 @@ class Player
         this.prevRoundResults = [null, null, null, null];
         this.funds = funds;
         this.surrendered = false;
+    }
+    handCount()
+    {
+        /**
+         * @returns {Number} number of hands player has.
+         */
+        let count = 1;
+        for (let i = 1; i < this.currentHand.length; i++)
+        {
+            if (this.currentHand[i].length === 0)
+            {
+                return count;
+            }
+            count++;
+        }
+        return count;
     }
     addBet(amt, handNum)
     {

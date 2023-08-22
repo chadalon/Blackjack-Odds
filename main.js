@@ -1,7 +1,7 @@
 const game = require("./game.js");
 const p = require("./player.js");
 const readline = require('readline');
-const a = require("./data-miner.js");
+const dm = require("./data-miner.js");
 /**
  * Some things to consider:
  * Player strategies - random vs if others are playing 'perfectly', if they tend to hit more, etc
@@ -48,7 +48,7 @@ function askQuestion(query) {
 }
 
 var g = new game.Game(6);
-var player = new p.Player(0, false);
+var player = new p.Player(false);
 async function main()
 {
     console.log(g.shoe);
@@ -139,6 +139,6 @@ function playerAction(ans, handNum)
         throw new Error("Please enter a valid option ([h]it, [s]tand, [d]ouble, s[p]lit, s[u]rrender");
     }
 }
-a.analyze();
+dm.analyze();
 return;
 main();

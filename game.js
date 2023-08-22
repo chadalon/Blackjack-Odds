@@ -1,5 +1,7 @@
 const cards = require("./cards.js");
 const pl = require("./player.js");
+
+TEN_VAL_CARDS = [10, 11, 12, 13];
 class Game
 {
     /**
@@ -48,7 +50,17 @@ class Game
         this.hiddenDealerCard = false; // true if dealer has a hidden card (adds to deck for true count)
         this.dealerHand = [];
 
-        this.TEN_VAL_CARDS = [10, 11, 12, 13];
+        // state snapshot vars
+        this.savePlayers = [];
+        this.saveShoe = [];
+        this.saveDiscards = [];
+        this.saveCount = [];
+        this.saveRoundDealt = [];
+        this.saveHiddenDealerCard = [];
+        this.saveDealerHand = [];
+        this.saveGameStarted = [];
+        this.saveDecks = [];
+
 
         this.DEALER_SHUFFLE = 50;
         if (opts['DEALER_SHUFFLE'])
@@ -139,10 +151,9 @@ class Game
             throw new Error("We already dealt cards for this round.");
         }
         // check deck
-        console.log()
         if (this.shoe.length / (this.decks * 52) * 100 <= this.DEALER_SHUFFLE)
         {
-            console.log("shufflin");
+            //console.log("shufflin");
             // shuffle
             this.shoe = this.shoe.concat(this.discards);
             this.discards = [];
@@ -208,27 +219,68 @@ class Game
         // count
         // player hands
         // shoe, discards
-        this.savePlayers = JSON.parse(JSON.stringify(this.players));
-        this.saveShoe = JSON.parse(JSON.stringify(this.shoe));
-        this.saveDiscards = JSON.parse(JSON.stringify(this.discards));
-        this.saveCount = this.count;
-        this.saveRoundDealt = this.roundDealt;
-        this.saveHiddenDealerCard = this.hiddenDealerCard;
-        this.saveDealerHand = JSON.parse(JSON.stringify(this.dealerHand));
-        this.saveGameStarted = this.gameStarted;
-        this.saveDecks = this.decks;
+        // making these a stack
+        this.savePlayers.push(JSON.parse(JSON.stringify(this.players)));
+        this.saveShoe.push(JSON.parse(JSON.stringify(this.shoe)));
+        this.saveDiscards.push(JSON.parse(JSON.stringify(this.discards)));
+        this.saveCount.push(this.count);
+        this.saveRoundDealt.push(this.roundDealt);
+        this.saveHiddenDealerCard.push(this.hiddenDealerCard);
+        this.saveDealerHand.push(JSON.parse(JSON.stringify(this.dealerHand)));
+        this.saveGameStarted.push(this.gameStarted);
+        this.saveDecks.push(this.decks);
     }
-    loadState()
+    loadState(importantPlayers = null)
     {
-        this.players = JSON.parse(JSON.stringify(this.savePlayers));
-        this.shoe = JSON.parse(JSON.stringify(this.saveShoe));
-        this.discards = JSON.parse(JSON.stringify(this.saveDiscards));
-        this.count = this.saveCount;
-        this.roundDealt = this.saveRoundDealt;
-        this.hiddenDealerCard = this.saveHiddenDealerCard;
-        this.dealerHand = JSON.parse(JSON.stringify(this.saveDealerHand));
-        this.gameStarted = this.saveGameStarted;
-        this.decks = this.saveDecks;
+        /**
+         * @param {Array} importantPlayers pass in players where you want their refs to stay.
+         */
+        this.restorePlayers(importantPlayers);
+        this.shoe = JSON.parse(JSON.stringify(this.saveShoe.pop()));
+        this.discards = JSON.parse(JSON.stringify(this.saveDiscards.pop()));
+        this.count = this.saveCount.pop();
+        this.roundDealt = this.saveRoundDealt.pop();
+        this.hiddenDealerCard = this.saveHiddenDealerCard.pop();
+        this.dealerHand = JSON.parse(JSON.stringify(this.saveDealerHand.pop()));
+        this.gameStarted = this.saveGameStarted.pop();
+        this.decks = this.saveDecks.pop();
+
+    }
+    restorePlayers(importantPlayers)
+    {
+        /**
+         * TODO !!!
+         *  playerstatic count or whatever will be screwed up. either save that here or something
+         * Imagine like adding a bunch of players deleting a bunch adding a few deleting a few adding a bunch. what will happen????
+         * for now it's not worried abt
+         * TODO also check this, make sure it works w/ multiple playhers
+         * 
+         */
+        if (importantPlayers === null)
+        {
+            this.players = this.savePlayers.pop();
+            return;
+        }
+        let impIds = [];
+        // get important ids
+        for (let i = 0; i < importantPlayers.length; i++)
+        {
+            impIds.push(importantPlayers[i].playerId);
+        }
+        this.players = [];
+        let rps = this.savePlayers.pop();
+        for (let i = 0; i < rps.length; i++)
+        {
+            if (!impIds.includes(rps[i].playerId))
+            {
+                this.players.push(rps[i]);
+                continue;
+            }
+            // find player
+            // assign
+            this.players.push(importantPlayers[impIds.indexOf(rps[i].playerId)]);
+            Object.assign(this.players[this.players.length - 1], rps[i]);
+        }
 
     }
     playerStand(player, handNum)
@@ -359,7 +411,7 @@ class Game
             }
             else
             {
-                // test this
+                // TODO test this
                 for (let j = 0; j < p.currentHand.length; j++)
                 {
                     if (p.currentHand[j].length === 0)
@@ -368,7 +420,7 @@ class Game
                         continue;
                     }
                     pScore = finalScore(handTotal(p.currentHand[j]));
-                    console.log("pscore, dscore:",pScore, dealerScore);
+                    //console.log("pscore, dscore:",pScore, dealerScore);
                     if (pScore > 21)
                     {
                         p.prevRoundResults[j] = -p.currentBet[j];
@@ -410,7 +462,7 @@ class Game
     {
         this.count += this.COUNT_METHOD[card.value]; // smooth af :)
     }
-    playerJoin(playerId, playerObj = null)
+    playerJoin(playerObj = null)
     {
         /**
          * is there a better way to do this? params have to equal player params
@@ -418,7 +470,7 @@ class Game
         if (playerObj)
             this.players.push(playerObj);
         else
-            this.players.push(new pl.Player(playerId));
+            this.players.push(new pl.Player());
     }
     checkForActivePlayer()
     {
@@ -466,7 +518,7 @@ class Game
 function checkCardValsEqual(val1, val2)
 {
     if (val1 === val2) return true;
-    if (this.TEN_VAL_CARDS.includes(val1) && this.TEN_VAL_CARDS.includes(val2)) return true;
+    if (TEN_VAL_CARDS.includes(val1) && TEN_VAL_CARDS.includes(val2)) return true;
     return false;
 }
 function softSeventeen(hand)
@@ -474,6 +526,15 @@ function softSeventeen(hand)
     let ht = handTotal(hand);
     if (ht[1] === 0) return false; // no aces
     return 11 + (ht[1] - 1) + ht[0] === 17;
+}
+function cardValue(val)
+{
+    /**
+     * @param {Number} val the number value of the card
+     */
+    if (TEN_VAL_CARDS.includes(val))
+        return 10;
+    return val;
 }
 function handTotal(hand)
 {
@@ -543,7 +604,6 @@ function printHand(hand)
 function printPlayerHand(player)
 {
     let hand = player.currentHand;
-    console.log("Your hands:");
     for (let i = 0; i < hand.length; i++)
     {
         if (hand[i].length === 0) continue;
@@ -552,4 +612,4 @@ function printPlayerHand(player)
     }
 }
 
-module.exports = { Game, handTotal, finalScore, softSeventeen, printHand, printPlayerHand, cardtoString }
+module.exports = { Game, handTotal, finalScore, softSeventeen, printHand, printPlayerHand, cardtoString, cardValue }
