@@ -8,14 +8,28 @@ var initDealerHand;
 const otherPlayers = [];
 var standWLP; // WIN = 0 LOSS = 1 PUSH = 2
 var hitBjSL;
+var hitDat;
 var doubleWLP;
 var resSplitHands = []; // array of arrays
 var sessionData = {}; // keys are player cards, and then dealer card is indexed
 // TODO test if this or array is faster
+// TODO i think we only need to test hit and split/hit now?
+// bc we can gather data from that to determine the best thing to do (since the goal is to get the highest score)
 const MOVE_TEMPLATE = {
     stand: [0,0,0], // wlp
 
-    hit: [0,0,0], // Blackjack, survivals, losses (rn based on only hitting once)
+    hit: [
+        [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
+        [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
+        [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
+        [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
+        [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
+        [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
+        [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
+        [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
+        [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
+        [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}] // max you could hit in any hand is 9 times (according to my genius)
+    ], // count of dealerscores at values [17, 18, 19, 20, 21, 22+] and player-- how many times etc
     double: [0,0,0] // wlp. this is redundant with the way im doing hit (to a degree)
 
 };
@@ -98,23 +112,37 @@ function analyzeRound()
         g.saveState();
         testSplit();*/
         //throw new Error("stah");
-
         pushRoundResults();
     }
     // for now if you get an instant bj,
     // save in hard totals, etc (ref that chart to store dat)
 
+    g.clearSaves();
     g.endOfRound();
 }
 function pushRoundResults()
 {
-    // initdealerhand, initpla...
-    // stand, hit, etc..
     // TODO test speed storing roundkey in vars vs calling twice
     let roundObj = sessionData[getRoundKey()[0]][getRoundKey()[1]];
     roundObj.stand[standWLP]++;
-    roundObj.hit[hitBjSL]++;
+    //roundObj.hit[hitBjSL]++;
     roundObj.double[doubleWLP]++;
+
+    // get num of times hit
+    let timesHit = player.currentHand[0].length - 2;
+    // add dealer counts
+    if (hitDat[0] < 23)
+        roundObj.hit[timesHit][0][hitDat[0] - 17]++;
+    else
+        roundObj.hit[timesHit][0][5]++;
+    // add player counts
+    // make this run faster when done with this function
+    let pScore = game.finalScore(game.handTotal(player.currentHand[0]));
+    if (roundObj.hit[timesHit][1].hasOwnProperty(pScore.toString()))
+         roundObj.hit[timesHit][1][pScore.toString()]++;
+    else
+        roundObj.hit[timesHit][1][pScore.toString()] = 1;
+
     if (resSplitHands.length > 0)
     {
 
@@ -222,6 +250,16 @@ function testStand()
 }
 function testHit()
 {
+    hitUntilBeforeLoss(0);
+    closeRound();
+    // get player hand score
+    // get dealer hand score
+    // hitdat = 
+    hitDat = [game.finalScore(game.handTotal(g.dealerHand)), game.finalScore(game.handTotal(player.currentHand[0]))];
+
+    // logging:
+    // hit: {0: [[dealer scores?],[final scores: 16: (how many times), 17: (how many times), etc.]]} - maybe store as arrays
+    return;
     // hit
     g.playerHit(player, 0);
     if (player.handComplete[0])
@@ -273,4 +311,32 @@ function testSplit()
 }
 
 // make a function finishOutHand(handNum) or something. this will be called after splitting deck and after surviving a hit
+function hitUntilBeforeLoss(handNum)
+{
+    // loop:
+    // save state
+    // hit
+    // if we lost
+
+    // find out what the highest possible score is/was - if you have an ace
+    while (player.canPlayHand(handNum))
+    {
+        // livin on the edge
+        player.currentHand[handNum].push(g.getTopCardInShoe());
+        if (game.finalScore(game.handTotal(player.currentHand[handNum])) > 21)
+        {
+            // next card will be too high, we've hit the max
+            player.currentHand[handNum].length -= 1;
+            break;
+        }
+        player.currentHand[handNum].length -= 1;
+        g.playerHit(player, handNum);
+    }
+    if (player.canPlayHand(handNum))
+    {
+        // stand the player if they are still in the game
+        g.playerStand(player, handNum);
+    }
+
+}
 module.exports = {analyze}

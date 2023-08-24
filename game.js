@@ -50,16 +50,7 @@ class Game
         this.hiddenDealerCard = false; // true if dealer has a hidden card (adds to deck for true count)
         this.dealerHand = [];
 
-        // state snapshot vars
-        this.savePlayers = [];
-        this.saveShoe = [];
-        this.saveDiscards = [];
-        this.saveCount = [];
-        this.saveRoundDealt = [];
-        this.saveHiddenDealerCard = [];
-        this.saveDealerHand = [];
-        this.saveGameStarted = [];
-        this.saveDecks = [];
+        this.clearSaves();
 
 
         this.DEALER_SHUFFLE = 50;
@@ -204,6 +195,14 @@ class Game
     {
         return JSON.parse(JSON.stringify(this.dealerHand[1]));
     }
+    getTopCardInShoe()
+    {
+        /**
+         * for cheating
+         * lol to see if we should hit or not for testing
+         */
+        return (this.shoe[this.shoe.length - 1]);
+    }
     dealPlayer(player, handNum = 0)
     {
         /**
@@ -245,6 +244,20 @@ class Game
         this.gameStarted = this.saveGameStarted.pop();
         this.decks = this.saveDecks.pop();
 
+    }
+    clearSaves()
+    {
+        // state snapshot vars
+        this.savePlayers = [];
+        this.saveShoe = [];
+        this.saveDiscards = [];
+        this.saveCount = [];
+        this.saveRoundDealt = [];
+        this.saveHiddenDealerCard = [];
+        this.saveDealerHand = [];
+        this.saveGameStarted = [];
+        this.saveDecks = [];
+        
     }
     restorePlayers(importantPlayers)
     {
