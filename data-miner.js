@@ -1,5 +1,17 @@
 const game = require("./game.js");
 const p = require("./player.js");
+const readline = require('readline');
+function askQuestion(query) {
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+    });
+
+    return new Promise(resolve => rl.question(query, ans => {
+        rl.close();
+        resolve(ans);
+    }))
+}
 
 var g;
 var player;
@@ -7,32 +19,47 @@ var initPlayerHand;
 var initDealerHand;
 const otherPlayers = [];
 var standWLP; // WIN = 0 LOSS = 1 PUSH = 2
-var hitBjSL;
+var standDat;
 var hitDat;
 var doubleWLP;
 var resSplitHands = []; // array of arrays
 var sessionData = {}; // keys are player cards, and then dealer card is indexed
 // TODO test if this or array is faster
-// TODO i think we only need to test hit and split/hit now?
-// bc we can gather data from that to determine the best thing to do (since the goal is to get the highest score)
-const MOVE_TEMPLATE = {
-    stand: [0,0,0], // wlp
+const MOVE_TEMPLATE_WLP = [
+    [0,0,0,0,0,0,0,0,0,0], // we won WLP[0][3] times hitting 3 times in this situation
+    [0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0]
+];
+const SPLIT_TEMPLATE = [
+    // store how many decks split
+    // how many won/lost
+    // and maybe same data as hit could be stored - but we need a way to separate it
+    // so we can check stats on decks that were split vs not
+    null, // INDEX in to list with value of cards split
+    [
+        //second card
+        null,
+        [
+            // index is dealer's card
+            null,
+            [
+                // index is how many times hit
+                [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
+                [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
+                [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
+                [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
+                [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
+                [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
+                [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
+                [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
+                [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
+                [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}]
+            ]
+        ]
+    ]
 
-    hit: [
-        [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
-        [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
-        [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
-        [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
-        [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
-        [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
-        [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
-        [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
-        [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}],
-        [[0,0,0,0,0,0], {/**16: 1, 18: 5, 21: 4 */}] // max you could hit in any hand is 9 times (according to my genius)
-    ], // count of dealerscores at values [17, 18, 19, 20, 21, 22+] and player-- how many times etc
-    double: [0,0,0] // wlp. this is redundant with the way im doing hit (to a degree)
 
-};
+];
 /*
 [player cards - wait these would b outside, wins, losses, pushes, ] dealer card is already known
 */
@@ -45,7 +72,7 @@ function initSession()
     let innerArr = [null];
     for (let k = 1; k < 11; k++)
     {
-        innerArr.push(JSON.parse(JSON.stringify(MOVE_TEMPLATE)));
+        innerArr.push(JSON.parse(JSON.stringify(MOVE_TEMPLATE_WLP)));
     }
     let indexStr;
     for (let i = 1; i < 11; i++)
@@ -57,14 +84,14 @@ function initSession()
         }
     }
 }
-function analyze()
+async function analyze()
 {
     initSession();
     createGame();
     addPlayers();
     g.beginGame();
     for (let i = 0; i < 100000; i++)
-    analyzeRound();
+    await analyzeRound();
 
     console.log(JSON.stringify(sessionData));
 
@@ -73,7 +100,7 @@ function newRound()
 {
     // standwlp ==[....] init anything needed to here
 }
-function analyzeRound()
+async function analyzeRound()
 {
     newRound();
     g.placeBets();
@@ -81,77 +108,24 @@ function analyzeRound()
     initDealerHand = g.getDealerTopCard();
     initPlayerHand = JSON.parse(JSON.stringify(player.currentHand[0]));
 
-    if (!checkInstantBlackJack())
-    {
-        // save state
-        // store what the hand is (dealer and player)
-        // test each thing
-            // log results
-        g.saveState();
-        // printRoundDat();
-        testStand();
-        // printRoundDat();
-        g.loadState([player]);
-        //printRoundDat();
-        g.saveState();
-        testHit();
-        if (hitBjSL === 2)
-        {
-            // if we lost the hit we gonna lose the double
-            doubleWLP = 1;
-        }
-        else
-        {
-            g.loadState([player]);
-            g.saveState();
-            testDouble();
-        }
-        
-        /*
-        g.loadState([player]);
-        g.saveState();
-        testSplit();*/
-        //throw new Error("stah");
-        pushRoundResults();
-    }
-    // for now if you get an instant bj,
-    // save in hard totals, etc (ref that chart to store dat)
-
-    g.clearSaves();
+    hitDat = await testHit();
+    pushRoundResults();
     g.endOfRound();
 }
 function pushRoundResults()
 {
     // TODO test speed storing roundkey in vars vs calling twice
     let roundObj = sessionData[getRoundKey()[0]][getRoundKey()[1]];
-    roundObj.stand[standWLP]++;
-    //roundObj.hit[hitBjSL]++;
-    roundObj.double[doubleWLP]++;
-
-    // get num of times hit
-    let timesHit = player.currentHand[0].length - 2;
-    // add dealer counts
-    if (hitDat[0] < 23)
-        roundObj.hit[timesHit][0][hitDat[0] - 17]++;
-    else
-        roundObj.hit[timesHit][0][5]++;
-    // add player counts
-    // make this run faster when done with this function
-    let pScore = game.finalScore(game.handTotal(player.currentHand[0]));
-    if (roundObj.hit[timesHit][1].hasOwnProperty(pScore.toString()))
-         roundObj.hit[timesHit][1][pScore.toString()]++;
-    else
-        roundObj.hit[timesHit][1][pScore.toString()] = 1;
-
-    if (resSplitHands.length > 0)
+    console.log(hitDat);
+    for (let i = 0; i < 3; i++) // magic number is size of hitDat
     {
-
+        if (hitDat[i].length === 0) continue;
+        for (let j = 0; j < hitDat[i].length; j++)
+        {
+            roundObj[i][hitDat[i][j]]++;
+        }
     }
-
-    //console.log(roundObj);
-    //console.log(sessionData);
-    //console.log(JSON.stringify(sessionData));
-
+    console.log(roundObj);
 }
 function getRoundKey()
 {
@@ -234,10 +208,23 @@ function otherPlayersMoves()
 {
     throw new Error("other player moves not implemented");
 }
+function getDealerAndPlayerTotal(handNum = 0)
+{
+    return [game.finalScore(game.handTotal(g.dealerHand)), game.finalScore(game.handTotal(player.currentHand[handNum]))];
+}
+function getPlayerTotal(handNum = 0)
+{
+    return game.finalScore(game.handTotal(player.currentHand[handNum]));
+}
+function getPlayerMinimum(handNum = 0)
+{
+    return game.minScore(game.handTotal(player.currentHand[handNum]));
+}
 function testStand()
 {
     g.playerStand(player, 0);
     closeRound();
+    standDat = getDealerAndPlayerTotal();
     let prevR = player.prevRoundResults[0];
     //console.log("p",player.prevRoundResults[0]);
     //console.log(player.funds);
@@ -248,35 +235,65 @@ function testStand()
     else
         standWLP = 2;
 }
-function testHit()
+async function testHit()
 {
-    hitUntilBeforeLoss(0);
-    closeRound();
-    // get player hand score
-    // get dealer hand score
-    // hitdat = 
-    hitDat = [game.finalScore(game.handTotal(g.dealerHand)), game.finalScore(game.handTotal(player.currentHand[0]))];
-
-    // logging:
-    // hit: {0: [[dealer scores?],[final scores: 16: (how many times), 17: (how many times), etc.]]} - maybe store as arrays
-    return;
-    // hit
-    g.playerHit(player, 0);
-    if (player.handComplete[0])
-    {
-        if (game.finalScore(game.handTotal(player.currentHand[0])) === 21)
-        {
-            hitBjSL = 0;
-            return;
-        }
-        // lost on first hit
-        // add in whatever we log when losing
-        hitBjSL = 2;
-        return;
-    }
-    hitBjSL = 1;
+    return await hitHelper(0);
 
     // we could also check avg max num of hits (and get percentagew of losing with each following one)
+}
+async function hitHelper(handNum = 0)
+{
+    let hitWins = [];
+    let hitPushes = [];
+    let hitLosses = [];
+    let prevR;
+    let hitCounts = 0;
+    function checkResults()
+    {
+        g.saveState();
+        if (player.canPlayHand(handNum))
+            g.playerStand(player, handNum);
+        closeRound();
+        prevR = player.prevRoundResults[handNum];
+        if (prevR > 0)
+        {
+            hitWins.push(hitCounts);
+        }
+        else if (prevR === 0)
+        {
+            hitPushes.push(hitCounts);
+        }
+        else
+        {
+            hitLosses.push(hitCounts);
+        }
+        console.log(getDealerAndPlayerTotal());
+        game.printHand(player.currentHand[handNum]);
+        g.loadState([player]);
+    }
+    // test standing first
+    checkResults();
+
+    while (getPlayerTotal() < 21) // if you get a soft 21 you are forced to b done
+    {
+        g.playerHit(player, 0);
+        hitCounts++;
+        checkResults();
+        await askQuestion("pausin");
+    }
+    
+    console.log("hitwins",hitWins);
+    console.log("hitPushes",hitPushes);
+    console.log("hitlosses",hitLosses);
+    await askQuestion("left the loop.");
+    return [hitWins, hitLosses, hitPushes];
+
+}
+function hitAndCheckScore()
+{
+    g.saveState();
+    g.playerHit(player, 0);
+    // if we are over 20, this was our last hit.
 }
 
 function testDouble()
@@ -308,6 +325,10 @@ function testSplit()
         // check each hand again, etc
 
     }
+}
+function dealWithSplitHand(handNum)
+{
+    // measure hits?
 }
 
 // make a function finishOutHand(handNum) or something. this will be called after splitting deck and after surviving a hit
