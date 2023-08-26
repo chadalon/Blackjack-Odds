@@ -179,7 +179,22 @@ class Game
             // remember to update the count of that card l8er
             this.dealDealer(i === 0);
         }
+        // TODO test if dealer gets bj
+        this.checkDealerGotBJ();
         this.roundDealt = true;
+    }
+    checkDealerGotBJ()
+    {
+        if (this.dealerHand.length === 2 && finalScore(handTotal(this.dealerHand)) === 21)
+        {
+            // end all player turns
+            for (let i = 0; i < this.players.length; i++)
+            {
+                this.players[i].closeHand(0);
+            }
+            // dealer turn
+            this.dealerTurn();
+        }
     }
     dealDealer(hiddenCard = false)
     {
@@ -244,6 +259,18 @@ class Game
         this.gameStarted = this.saveGameStarted.pop();
         this.decks = this.saveDecks.pop();
 
+    }
+    popState()
+    {
+        this.savePlayers.length -= 1;
+        this.saveShoe.length -= 1;
+        this.saveDiscards.length -= 1;
+        this.saveCount.length -= 1;
+        this.saveRoundDealt.length -= 1;
+        this.saveHiddenDealerCard.length -= 1;
+        this.saveDealerHand.length -= 1;
+        this.saveGameStarted.length -= 1;
+        this.saveDecks.length -= 1;
     }
     clearSaves()
     {
@@ -440,7 +467,21 @@ class Game
                     }
                     else if (pScore === dealerScore)
                     {
-                        p.prevRoundResults[j] = 0;
+                        if (this.dealerHand.length === 2) // dealer got a bj
+                        {
+                            if (p.currentHand.length > 2)
+                            {
+                                p.prevRoundResults[j] = -p.currentBet[j];
+                            }
+                            else
+                            {
+                                p.prevRoundResults[j] = 0;
+                            }
+                        }
+                        else
+                        {
+                            p.prevRoundResults[j] = 0;
+                        }
                     }
                     else if (pScore > dealerScore || dealerScore > 21) // win
                     {
@@ -582,6 +623,10 @@ function finalScore(handVal)
 
     return sc - 10;
 }
+function minScore(handVal)
+{
+    return handVal[0] + handVal[1];
+}
 
 function arrayEquals(a, b) {
     return Array.isArray(a) &&
@@ -625,4 +670,4 @@ function printPlayerHand(player)
     }
 }
 
-module.exports = { Game, handTotal, finalScore, softSeventeen, printHand, printPlayerHand, cardtoString, cardValue }
+module.exports = { Game, handTotal, finalScore, softSeventeen, printHand, printPlayerHand, cardtoString, cardValue, minScore }
