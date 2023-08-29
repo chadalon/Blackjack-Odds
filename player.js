@@ -50,18 +50,33 @@ class Player
             throw new Error("Can't split this hand. doesn't have 2 cards.");
         if (this.handComplete[handNum])
             throw new Error("Why u tryin to split a hand that can't be split");
+        if (this.handCount() >= 4)
+            throw new Error ("You can't split again, we have already split like 3 times");
 
         let newHandNum;
         for (let i = 0; i < this.currentHand.length; i++)
         {
             if (this.currentHand[i].length === 0)
+            {
                 newHandNum = i;
+                break;
+            }
         }
         this.currentHand[newHandNum].push(this.currentHand[handNum].pop());
         this.addBet(this.currentBet[handNum], newHandNum); // match what we initially put in
         this.activateHand(newHandNum);
 
         return newHandNum;
+    }
+    handCount()
+    {
+        let hCount = 0;
+        for (let i = 0; i < this.currentHand.length; i++)
+        {
+            if (this.currentHand[i].length > 0)
+                hCount++;
+        }
+        return hCount;
     }
     hasSplit()
     {
@@ -100,6 +115,10 @@ class Player
     }
     canPlayHand(handNum)
     {
+        if (handNum >= this.handComplete.length)
+        {
+            return false;
+        }
         return !this.handComplete[handNum];
     }
     standing()

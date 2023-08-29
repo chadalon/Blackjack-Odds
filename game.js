@@ -345,10 +345,17 @@ class Game
         
         this.dealPlayer(player, handNum);
         let fs = finalScore(handTotal(player.currentHand[handNum]));
-        if (fs >= 21) player.closeHand(handNum);
+        if (fs >= 21) 
+        {
+            //console.log("score went over 21 on hit.");
+            player.closeHand(handNum);
+        }
         // if we've split on aces and now have hit to the limit, closehand
         if (player.hasSplit() > 0 && curHand[handNum][0].value === 1 && curHand[handNum].length - 2 >= this.NUM_HITS_ACE_SPLIT)
+        {
+            //console.log("we have split on aces and gone over the hit limit.");
             player.closeHand(handNum);
+        }
     }
     playerDouble(player, handNum)
     {
@@ -411,6 +418,11 @@ class Game
         // check if turn is over
         if (!this.allPlayersDone())
             throw new Error("Dealer can't move because not all players are done!");
+
+        if (!this.hiddenDealerCard)
+        {
+            throw new Error("Dealer turn already happened!!!");
+        }
     
         this.hiddenDealerCard = false;
         this.updateCount(this.dealerHand[0]);

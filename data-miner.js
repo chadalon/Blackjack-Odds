@@ -90,7 +90,7 @@ async function analyze()
     createGame();
     addPlayers();
     g.beginGame();
-    for (let i = 0; i < 100000; i++)
+    for (let i = 0; i < 10000; i++)
     await analyzeRound();
 
     console.log(JSON.stringify(sessionData));
@@ -107,8 +107,16 @@ async function analyzeRound()
     g.dealCards();
     initDealerHand = g.getDealerTopCard();
     initPlayerHand = JSON.parse(JSON.stringify(player.currentHand[0]));
-
+    let b = getDealerAndPlayerTotal();
+    await checkHand();
+    /*
+    g.saveState();
     hitDat = await testHit();
+
+    g.loadState([player]);
+    await testSplit();
+    */
+    // console.log(g.savePlayers.length);
     pushRoundResults();
     g.endOfRound();
 }
@@ -116,7 +124,10 @@ function pushRoundResults()
 {
     // TODO test speed storing roundkey in vars vs calling twice
     let roundObj = sessionData[getRoundKey()[0]][getRoundKey()[1]];
-    console.log(hitDat);
+    if (!hitDat)
+    {
+        askQuestion("add in split data");
+    }
     for (let i = 0; i < 3; i++) // magic number is size of hitDat
     {
         if (hitDat[i].length === 0) continue;
@@ -125,7 +136,6 @@ function pushRoundResults()
             roundObj[i][hitDat[i][j]]++;
         }
     }
-    console.log(roundObj);
 }
 function getRoundKey()
 {
@@ -197,6 +207,7 @@ function getCardsInPlay()
 
 function closeRound()
 {
+    // console.log("closing round.");
     // finish any other player moves
     if (otherPlayers.length > 0)
     {
@@ -251,9 +262,15 @@ async function hitHelper(handNum = 0)
     function checkResults()
     {
         g.saveState();
-        if (player.canPlayHand(handNum))
+        if (player.canPlayHand(handNum)) // player or dealer got a bj, or player is over 21
+        {
+            // console.log(JSON.stringify(player.currentHand));
+            // console.log("hh standing hand",handNum);
             g.playerStand(player, handNum);
-        closeRound();
+            //console.log(JSON.stringify(player.currentHand));
+
+            closeRound();
+        }
         prevR = player.prevRoundResults[handNum];
         if (prevR > 0)
         {
@@ -267,27 +284,135 @@ async function hitHelper(handNum = 0)
         {
             hitLosses.push(hitCounts);
         }
-        console.log(getDealerAndPlayerTotal());
-        game.printHand(player.currentHand[handNum]);
+        //console.log(getDealerAndPlayerTotal());
+        //game.printHand(player.currentHand[handNum]);
         g.loadState([player]);
     }
     // test standing first
     checkResults();
-
-    while (getPlayerTotal() < 21) // if you get a soft 21 you are forced to b done
+    if (!player.canPlayHand(handNum))
     {
-        g.playerHit(player, 0);
+        if (handNum !== 0)
+        {
+            throw new Error("for some reason hand num is not zero:",handNum);
+        }
+        if (hitPushes.length > 0)
+        {
+            console.log([hitWins, hitLosses, hitPushes]);
+            game.printHand(player.currentHand[handNum]);
+            game.printHand(g.dealerHand);
+
+            await askQuestion("dealer got a bj.");
+        }
+        return [hitWins, hitLosses, hitPushes];
+    }
+    while (getPlayerTotal(handNum) < 21 && player.canPlayHand(handNum)) // if you get a soft 21 you are forced to b done
+    {
+        /*
+        console.log("playertot", getPlayerTotal(handNum));
+        console.log(JSON.stringify(player.currentHand));
+
+        try {
+            console.log(JSON.stringify(player.currentHand));
+            console.log("hh Hitting hand", handNum);
+            // error here when we split aces and go over hit limit. that's why its closed
+            g.playerHit(player, handNum);
+
+        }
+        catch (error)
+        {
+            console.log(error);
+            throw new Error(error);
+        }
+        */
+        g.playerHit(player, handNum);
         hitCounts++;
         checkResults();
-        await askQuestion("pausin");
+        //await askQuestion("pausin");
     }
-    
+    /*
     console.log("hitwins",hitWins);
     console.log("hitPushes",hitPushes);
     console.log("hitlosses",hitLosses);
-    await askQuestion("left the loop.");
+    await askQuestion("left the loop.");*/
     return [hitWins, hitLosses, hitPushes];
 
+}
+async function checkHand(handNum = 0)
+{
+    async function checkResults()
+    {
+        g.saveState();
+        if (player.canPlayHand(handNum))
+        {
+            // console.log(JSON.stringify(player.currentHand));
+            // console.log("ch standing hand",handNum);
+            g.playerStand(player, handNum);
+        }
+        let c = await checkHand(handNum + 1);
+        // results
+        // console.log(c);
+        g.loadState([player]);
+    }
+    let splitCount = 0;
+    g.saveState();
+    // console.log(JSON.stringify(player.currentHand));
+    // TODO check if this is right. we'll just hithelper on the last available hand
+    let b;
+    if (!player.canPlayHand(handNum + 1))
+    {
+        b = await hitHelper(handNum);
+    }
+    //console.log(b);
+    g.loadState([player]);
+    // console.log(JSON.stringify(player.currentHand));
+    // console.log(g.savePlayers.length);
+
+    if (handNum === 0)
+    {
+        hitDat = b;
+        if (canSplitHand(0))
+        {
+            //await askQuestion("We made it to a split.");
+        }
+    }
+    if (!roundIsOver())
+    {
+        while (canSplitHand(handNum))
+        {
+            // console.log(player.handComplete);
+            // console.log("splitting hand",handNum);
+            splitCount++;
+            // error here when dealer has gotten a blackjack. - SHOULD BE FIXED NOW
+            g.playerSplit(player, handNum);
+            g.saveState();
+            
+            await checkResults();
+            let hitcount = 0;
+            while (getPlayerTotal(handNum) < 21 && player.canPlayHand(handNum))
+            {
+                // console.log(JSON.stringify(player.currentHand));
+                // console.log("ch hitting hand",handNum);
+                // error here when splitting aces and going over hit limit
+                g.playerHit(player, handNum);
+                hitcount++;
+
+                await checkResults();
+            }
+
+            g.loadState([player]);
+        }
+    }
+    else if (hitDat[2].length === 1)
+    throw new Error (hitDat);
+}
+function roundIsOver()
+{
+    return !g.hiddenDealerCard;
+}
+function canSplitHand(handNum)
+{
+    return (game.cardValue(player.currentHand[handNum][0].value) === game.cardValue(player.currentHand[handNum][1].value) && player.handCount() < 4 && !(player.currentHand[handNum][0].value === 1 && player.handCount() > 1)); // and not resplitting aces
 }
 function hitAndCheckScore()
 {
@@ -309,20 +434,27 @@ function testDouble()
         doubleWLP = 2;
 }
 
-function testSplit()
+async function testSplit()
 {
     if (game.cardValue(initPlayerHand[0].value) !== game.cardValue(initPlayerHand[1].value))
     {
-        resSplitHands = [];
+        resSplitHands = null;
         return;
     }
+    if (player.currentHand[0].length > 2)
+    {
+        throw new Error("can't split hand. length is more than 2");
+    }
+    g.playerSplit(player, 0);
 
-    while (player.handCount() < 4)
+    for (let i = 0; i < 4; i++) // 4 here is max amt of hands player can have
     {
         // if hand is splittable
-        g.playerSplit(player, 0);
         // add to resSplitHands
-        // check each hand again, etc
+        // check each hand again. if it's splittable, first try just hitting, then try splitting again.
+        // of course we can't hit if we have an ace, etc
+        let b = await hitHelper(i);
+        console.log(b);
 
     }
 }
