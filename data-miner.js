@@ -1,6 +1,7 @@
 const game = require("./game.js");
 const p = require("./player.js");
 const readline = require('readline');
+const fs = require('fs');
 function askQuestion(query) {
     const rl = readline.createInterface({
         input: process.stdin,
@@ -21,6 +22,7 @@ const otherPlayers = [];
 var standWLP; // WIN = 0 LOSS = 1 PUSH = 2
 var standDat;
 var hitDat;
+var splitDat;
 var doubleWLP;
 var resSplitHands = []; // array of arrays
 var sessionData = {}; // keys are player cards, and then dealer card is indexed
@@ -60,6 +62,7 @@ const SPLIT_TEMPLATE = [
 
 
 ];
+var splitData = {};
 /*
 [player cards - wait these would b outside, wins, losses, pushes, ] dealer card is already known
 */
@@ -81,20 +84,34 @@ function initSession()
         {
             indexStr = i.toString() + "," + j.toString();
             sessionData[indexStr] = JSON.parse(JSON.stringify(innerArr));
+            splitData[indexStr] = JSON.parse(JSON.stringify([innerArr,innerArr,innerArr])); // after 1 split, 2 splits, or 3
         }
     }
 }
 async function analyze()
 {
-    initSession();
+    readFileIfExists();
     createGame();
     addPlayers();
     g.beginGame();
-    for (let i = 0; i < 10000; i++)
+    for (let i = 0; i < 1000; i++)
     await analyzeRound();
+    fs.writeFileSync('dat.txt', JSON.stringify(sessionData));
 
     console.log(JSON.stringify(sessionData));
 
+}
+function readFileIfExists(fname = "dat.txt")
+{
+    if (fs.existsSync(fname))
+    {
+        console.log("Reading file.");
+        sessionData = JSON.parse(fs.readFileSync(fname));
+    }
+    else
+    {
+        initSession();
+    }
 }
 function newRound()
 {
@@ -354,6 +371,7 @@ async function checkHand(handNum = 0)
         // console.log(c);
         g.loadState([player]);
     }
+    let load = [];
     let splitCount = 0;
     g.saveState();
     // console.log(JSON.stringify(player.currentHand));
@@ -362,6 +380,7 @@ async function checkHand(handNum = 0)
     if (!player.canPlayHand(handNum + 1))
     {
         b = await hitHelper(handNum);
+        load.push(b);
     }
     //console.log(b);
     g.loadState([player]);
@@ -371,10 +390,6 @@ async function checkHand(handNum = 0)
     if (handNum === 0)
     {
         hitDat = b;
-        if (canSplitHand(0))
-        {
-            //await askQuestion("We made it to a split.");
-        }
     }
     if (!roundIsOver())
     {
@@ -403,8 +418,7 @@ async function checkHand(handNum = 0)
             g.loadState([player]);
         }
     }
-    else if (hitDat[2].length === 1)
-    throw new Error (hitDat);
+    return load;
 }
 function roundIsOver()
 {
