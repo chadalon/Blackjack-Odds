@@ -2,18 +2,22 @@ const game = require("./game.js");
 const p = require("./player.js");
 const readline = require('readline');
 const fs = require('fs');
+const { performance } = require("perf_hooks");
+
+var rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+});
 function askQuestion(query) {
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-    });
 
     return new Promise(resolve => rl.question(query, ans => {
         rl.close();
         resolve(ans);
     }))
 }
-
+// for logging
+var totalTime = 0; // avg ~ 1.69ms
+// if file not exist, create one to save amt of rounds ran, total time
 var g;
 var player;
 var initPlayerHand;
@@ -22,10 +26,10 @@ const otherPlayers = [];
 var standWLP; // WIN = 0 LOSS = 1 PUSH = 2
 var standDat;
 var hitDat;
-var splitDat;
 var doubleWLP;
 var resSplitHands = []; // array of arrays
 var sessionData = {}; // keys are player cards, and then dealer card is indexed
+var exiting = false;
 // TODO test if this or array is faster
 const MOVE_TEMPLATE_WLP = [
     [0,0,0,0,0,0,0,0,0,0], // we won WLP[0][3] times hitting 3 times in this situation
@@ -88,17 +92,60 @@ function initSession()
         }
     }
 }
-async function analyze()
+function main()
 {
+    analyze();
+}
+async function analyze(saveEvery = 10000)
+{
+    readline.emitKeypressEvents(process.stdin);
+    process.stdin.setRawMode(true);
+    
+    process.stdin.on('keypress', (str, key) => {
+        console.log(str, key, run);
+        // Conditions on key
+        if(key.name == 'escape'){
+            exiting = true;
+        }  
+        if(key.name == 'c' && key.ctrl == true){
+            process.exit(1);
+        }
+    });
     readFileIfExists();
     createGame();
     addPlayers();
     g.beginGame();
-    for (let i = 0; i < 1000; i++)
-    await analyzeRound();
-    fs.writeFileSync('dat.txt', JSON.stringify(sessionData));
-
+    let i = 0;
+    let start = performance.now();
+    let end;
+    while(true)
+    {
+        if (exiting)
+        {
+            break;
+        }
+        if (i % saveEvery === 0 && i > 0)
+        {
+            end = performance.now()
+            totalTime += end - start
+            console.log("saving.. have now ran",i,"times");
+            console.log(`avg time per round: ${totalTime / i}ms`) // avg time over 1 million was 3.3ms (mightve been slow cause teams was running)
+            //console.log("You have 5 seconds to move on with your life.");
+            //await setTimeout(function(){console.log("continuing...");},10); // doesnt work for some fucking reason
+            start = performance.now()
+        }
+        analyzeRound();
+        i++;
+    }
+    console.log("Saving and exiting...");
+    saveDat();
+    console.log("Ran",i,"times.");
     console.log(JSON.stringify(sessionData));
+
+}
+function saveDat(fname = "dat.txt")
+{
+    fs.writeFileSync('dat.txt', JSON.stringify(sessionData));
 
 }
 function readFileIfExists(fname = "dat.txt")
@@ -117,7 +164,7 @@ function newRound()
 {
     // standwlp ==[....] init anything needed to here
 }
-async function analyzeRound()
+function analyzeRound()
 {
     newRound();
     g.placeBets();
@@ -125,7 +172,7 @@ async function analyzeRound()
     initDealerHand = g.getDealerTopCard();
     initPlayerHand = JSON.parse(JSON.stringify(player.currentHand[0]));
     let b = getDealerAndPlayerTotal();
-    await checkHand();
+    checkHand();
     /*
     g.saveState();
     hitDat = await testHit();
@@ -263,13 +310,13 @@ function testStand()
     else
         standWLP = 2;
 }
-async function testHit()
+function testHit()
 {
-    return await hitHelper(0);
+    return hitHelper(0);
 
     // we could also check avg max num of hits (and get percentagew of losing with each following one)
 }
-async function hitHelper(handNum = 0)
+function hitHelper(handNum = 0)
 {
     let hitWins = [];
     let hitPushes = [];
@@ -318,8 +365,6 @@ async function hitHelper(handNum = 0)
             console.log([hitWins, hitLosses, hitPushes]);
             game.printHand(player.currentHand[handNum]);
             game.printHand(g.dealerHand);
-
-            await askQuestion("dealer got a bj.");
         }
         return [hitWins, hitLosses, hitPushes];
     }
@@ -355,9 +400,9 @@ async function hitHelper(handNum = 0)
     return [hitWins, hitLosses, hitPushes];
 
 }
-async function checkHand(handNum = 0)
+function checkHand(handNum = 0)
 {
-    async function checkResults()
+    function checkResults()
     {
         g.saveState();
         if (player.canPlayHand(handNum))
@@ -366,7 +411,7 @@ async function checkHand(handNum = 0)
             // console.log("ch standing hand",handNum);
             g.playerStand(player, handNum);
         }
-        let c = await checkHand(handNum + 1);
+        let c = checkHand(handNum + 1);
         // results
         // console.log(c);
         g.loadState([player]);
@@ -379,7 +424,7 @@ async function checkHand(handNum = 0)
     let b;
     if (!player.canPlayHand(handNum + 1))
     {
-        b = await hitHelper(handNum);
+        b = hitHelper(handNum);
         load.push(b);
     }
     //console.log(b);
@@ -402,7 +447,7 @@ async function checkHand(handNum = 0)
             g.playerSplit(player, handNum);
             g.saveState();
             
-            await checkResults();
+            checkResults();
             let hitcount = 0;
             while (getPlayerTotal(handNum) < 21 && player.canPlayHand(handNum))
             {
@@ -412,7 +457,7 @@ async function checkHand(handNum = 0)
                 g.playerHit(player, handNum);
                 hitcount++;
 
-                await checkResults();
+                checkResults();
             }
 
             g.loadState([player]);
@@ -448,7 +493,7 @@ function testDouble()
         doubleWLP = 2;
 }
 
-async function testSplit()
+function testSplit()
 {
     if (game.cardValue(initPlayerHand[0].value) !== game.cardValue(initPlayerHand[1].value))
     {
@@ -467,7 +512,7 @@ async function testSplit()
         // add to resSplitHands
         // check each hand again. if it's splittable, first try just hitting, then try splitting again.
         // of course we can't hit if we have an ace, etc
-        let b = await hitHelper(i);
+        let b = hitHelper(i);
         console.log(b);
 
     }

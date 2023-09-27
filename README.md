@@ -15,3 +15,6 @@ To be created. Will analyze the data collected or something.
 ## test-strategy.js
 To be created. Lets you run several rounds with a strategy and determines success rate.
 Strategy can be created from analysis.
+
+## Important
+Using node 20.7.0

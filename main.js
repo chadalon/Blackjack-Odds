@@ -139,6 +139,6 @@ function playerAction(ans, handNum)
         throw new Error("Please enter a valid option ([h]it, [s]tand, [d]ouble, s[p]lit, s[u]rrender");
     }
 }
-dm.analyze();
+dm.analyze(8000);
 return;
 main();
