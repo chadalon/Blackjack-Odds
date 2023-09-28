@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="global.css">
+</head>
+<body>
+    <header>
+        <h1>Blackjack Results.</h1>
+
+    </header>
+    <div>
+        <table id="hands">
+            <tr>
+                <th></th>
+                <th>Dealer Card</th>
+            </tr>
+            <tr id="dealer-dat">
+                <th>Player Hand</th>
+            </tr>
+        </table>
+    </div>
+
+    <div id="data-follow">
+        <canvas id="data-chart"></canvas>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="analyze.js"></script>
+    <script src="chartStuff.js"></script>
+</body>
+</html>

@@ -1,6 +1,6 @@
-const fs = require('fs');
+// const fs = require('fs');
 
-const dat = JSON.parse(fs.readFileSync('dat.txt'));
+var dat;
 const W = 0;
 const L = 1;
 const P = 2;
@@ -94,4 +94,66 @@ function getTotalNumOfLossesUpToHit(lossArr, numHits)
     return tot;
 }
 
-analyze();
+function printFile(file) {
+    file = new File(["foo"], "../dat.txt", {
+        type: "text/plain",
+      });
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      console.log(evt.target.result);
+    };
+    reader.readAsText(file);
+  }
+  
+function initializeTable()
+{
+    /**
+     * Create table cells
+     */
+    let torw = document.getElementById("dealer-dat");
+    for (let i = 1; i < 11; i++)
+    {
+        let th = document.createElement("th");
+        th.innerHTML = i;
+        torw.appendChild(th);
+    }
+    
+    let k = Object.keys(dat);
+    console.log(k);
+    // blockStuff("5,6",4);
+    // return;
+    let pHand;
+    let tr;
+    let cell;
+    let table = document.getElementById("hands");
+    for (let i = 0; i < k.length; i++)
+    {
+        pHand = k[i];
+        tr = document.createElement("tr");
+        tr.id = pHand;
+        cell = document.createElement("th");
+        cell.innerHTML = pHand;
+        tr.appendChild(cell);
+        for (let j = 0; j < 10; j++)
+        {
+            tr.appendChild(document.createElement("td"));
+        }
+        table.appendChild(tr);
+    }
+    analyze();
+}
+var request = new XMLHttpRequest();
+request.open('GET', "../dat.txt", true);
+request.responseType = 'blob';
+request.onload = function() {
+    var reader = new FileReader();
+    reader.readAsText(request.response);
+    reader.onload =  function(e){
+        dat = JSON.parse(e.target.result);
+        initializeTable();
+    };
+};
+request.send();
+
+// printFile();
+//initializeTable();
