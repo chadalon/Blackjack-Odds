@@ -597,6 +597,7 @@ function cardValue(val)
 {
     /**
      * @param {Number} val the number value of the card
+     * @returns {Number} 10 for face cards, 1 for ace.
      */
     if (TEN_VAL_CARDS.includes(val))
         return 10;

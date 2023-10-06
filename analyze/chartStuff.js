@@ -1,23 +1,6 @@
 const ctx = document.getElementById('data-chart');
 
-  new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
-      datasets: [{
-        label: '# of Votes',
-        data: [12, 19, 3, 5, 2, 3],
-        borderWidth: 1
-      }]
-    },
-    options: {
-      scales: {
-        y: {
-          beginAtZero: true
-        }
-      }
-    }
-  });
+var curChart = null;
 
 let myDiv = document.getElementById("data-follow");
 //Detect touch device
@@ -41,7 +24,7 @@ const move = (e) => {
   } catch (e) {}
   //set left and top of div based on mouse position
   myDiv.style.left = x - 50 + "px";
-  myDiv.style.top = y - 50 + "px";
+  myDiv.style.top = y - 90   + "px";
 //   requestAnimationFrame(move);
 };
 // requestAnimationFrame(move);
@@ -54,3 +37,33 @@ document.addEventListener("mousemove", (e) => {
 document.addEventListener("touchmove", (e) => {
   move(e);
 });
+
+function createChart(dat)
+{
+    if (curChart)
+        curChart.destroy();
+    console.log(dat)
+
+    curChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [...Array(10).keys()],
+        datasets: [{
+          label: '# of Hits and win percentage',
+          data: dat,
+          borderWidth: 1
+        }]
+      },
+      options: {
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        }
+      }
+    });
+
+    
+}
+
+export {createChart};

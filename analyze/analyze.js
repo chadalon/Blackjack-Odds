@@ -1,4 +1,6 @@
 // const fs = require('fs');
+import * as chartStuff from "./chartStuff.js";
+import {cycleDat} from "./browserHelpers.js";
 
 var dat;
 const W = 0;
@@ -8,39 +10,13 @@ var outString = "Player hand, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10\n";
 
 function analyze()
 {
-    let k = Object.keys(dat);
-    // blockStuff("5,6",4);
-    // return;
-    for (let i = 0; i < k.length; i++)
+    let cd = cycleDat(dat);
+    for (const d of cd)
     {
-        checkHand(k[i]);
+        blockStuff(d[0], d[1]);
     }
 }
 
-function checkHand(hand)
-{
-    // console.log(dat[hand][1]);
-    let curRow = hand + ", ";
-    for (let i = 1; i < 11; i++)
-    {
-        blockStuff(hand, i);
-        continue;
-        let curBlock = dat[hand][i];
-        console.log(dat[hand][i][W]);
-        let wins = mostWLPs(dat[hand][i][W]);
-        let loss = mostWLPs(curBlock[L]);
-        let push = mostWLPs(curBlock[P]);
-        if (wins[0] !== 0) {
-            console.log(`most wins of hand ${hand} and dealer card ${i} was from hitting ${wins[1]} times. (won ${wins[0]} times.)`);
-            console.log(`hitting ${wins[1]} times lost ${dat[hand][i][L][wins[1]]} times.`);
-            // console.log(`total losses up to this hitting ${wins[1]} times: ${getTotalNumOfLossesUpToHit(loss, wins[1])}`);
-        }
-        if (loss[0] !== 0)
-        console.log(`most losses was from hitting ${loss[1]} times and this happened ${loss[0]} times.`);
-        if (push[0] !== 0)
-        console.log(`most pushes happened from hitting ${push[1]} times and this happened ${push[0]} times`);
-    }
-}
 function blockStuff(pHand, dHand)
 {
     // console.log(dat[pHand]);
@@ -64,8 +40,29 @@ function blockStuff(pHand, dHand)
 
         i++;
     }
-
+    let elem = document.getElementById(pHand).childNodes.item(dHand);
+    let innerVal = 'H' + lowestLossInd;
+    elem.style.backgroundColor = "#1cce82";
+    if (lowestLossInd === 0)
+    {
+        innerVal = 'S';
+        elem.style.backgroundColor = "#f74d33";
+    }
+    else if (lowestLossInd === 1)
+    {
+        // Dbl ?
+        if (lowestLossPer < .5)
+        {
+            innerVal = 'D';
+            elem.style.backgroundColor = "#6bc5d3";
+        }
+    }
+    elem.innerHTML = innerVal;
     console.log(`with ${pHand} and ${dHand} you should hit ${lowestLossInd} times (${Math.round((wlp[W][lowestLossInd] / totalPlays(wlp, lowestLossInd)) * 100)}% win rate) - ${totalPlays(wlp, lowestLossInd)} rounds\n`);
+    elem.addEventListener("mouseover", () => {
+        console.log(wlp);
+        chartStuff.createChart(dat[pHand][dHand][lowestLossInd]);
+    });
 }
 function totalPlays(WLPBlock, ind)
 {
@@ -95,7 +92,7 @@ function getTotalNumOfLossesUpToHit(lossArr, numHits)
 }
 
 function printFile(file) {
-    file = new File(["foo"], "../dat.txt", {
+    file = new File(["foo"], "../dat.json", {
         type: "text/plain",
       });
     const reader = new FileReader();
@@ -137,13 +134,14 @@ function initializeTable()
         for (let j = 0; j < 10; j++)
         {
             tr.appendChild(document.createElement("td"));
+            console.log(dat[pHand][j+1]);
         }
         table.appendChild(tr);
     }
     analyze();
 }
 var request = new XMLHttpRequest();
-request.open('GET', "../dat.txt", true);
+request.open('GET', "../dat.json", true);
 request.responseType = 'blob';
 request.onload = function() {
     var reader = new FileReader();

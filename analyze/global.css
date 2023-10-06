@@ -9,12 +9,14 @@ table {
 }
 table, th, td {
     border: 1px solid black;
+    text-align: center;
 }
 
 #data-follow {
     position: absolute;
     z-index: 2;
     transform: translate(-50%, -50%);
-    box-shadow: 0 0 20px rgba(16, 0, 54, 0.2);
+    box-shadow: 0 0 20px rgb(16, 0, 54, 0.2);
     transition: 0.1s ease-out;
+    background-color: white;
 }

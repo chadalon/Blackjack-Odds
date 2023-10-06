@@ -1,5 +1,6 @@
 const game = require("./game.js");
 const p = require("./player.js");
+const hf = require("./helperFuncs.js");
 const readline = require('readline');
 const fs = require('fs');
 const { performance } = require("perf_hooks");
@@ -132,7 +133,8 @@ async function analyze(saveEvery = 10000)
             console.log(`avg time per round: ${totalTime / i}ms`) // avg time over 1 million was 3.3ms (mightve been slow cause teams was running)
             //console.log("You have 5 seconds to move on with your life.");
             //await setTimeout(function(){console.log("continuing...");},10); // doesnt work for some fucking reason
-            start = performance.now()
+            start = performance.now();
+            saveDat();
         }
         analyzeRound();
         i++;
@@ -143,12 +145,12 @@ async function analyze(saveEvery = 10000)
     console.log(JSON.stringify(sessionData));
 
 }
-function saveDat(fname = "dat.txt")
+function saveDat(fname = "dat.json")
 {
-    fs.writeFileSync('dat.txt', JSON.stringify(sessionData));
+    fs.writeFileSync(fname, JSON.stringify(sessionData));
 
 }
-function readFileIfExists(fname = "dat.txt")
+function readFileIfExists(fname = "dat.json")
 {
     if (fs.existsSync(fname))
     {
@@ -187,7 +189,7 @@ function analyzeRound()
 function pushRoundResults()
 {
     // TODO test speed storing roundkey in vars vs calling twice
-    let roundObj = sessionData[getRoundKey()[0]][getRoundKey()[1]];
+    let roundObj = sessionData[hf.getRoundKey(initPlayerHand, initDealerHand)[0]][hf.getRoundKey(initPlayerHand, initDealerHand)[1]];
     if (!hitDat)
     {
         askQuestion("add in split data");
@@ -200,20 +202,6 @@ function pushRoundResults()
             roundObj[i][hitDat[i][j]]++;
         }
     }
-}
-function getRoundKey()
-{
-    /**
-     * @returns {Array} [key, index of inner array]
-     */
-    let v1 = game.cardValue(initPlayerHand[0].value);
-    let v2 = game.cardValue(initPlayerHand[1].value);
-    if (v1 > v2)
-    {
-        return [v2.toString() + "," + v1.toString(), game.cardValue(initDealerHand.value)];
-    }
-    // now first is either less or they are the same so it doesn't matter
-    return [v1.toString() + "," + v2.toString(), game.cardValue(initDealerHand.value)];
 }
 function checkInstantBlackJack()
 {
